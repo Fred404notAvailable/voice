@@ -1,206 +1,313 @@
-import { useState, useRef } from "react";
+import { useRef, useCallback } from "react";
+import { Mic, MicOff, Activity, Wifi, WifiOff } from "lucide-react";
+
 import { startCapture } from "./lib/audioCapture";
 import { VoiceSentryWsClient } from "./lib/wsClient";
+import { useSession } from "./state/useSession";
+
 import { LiveSpectrogram } from "./components/LiveSpectrogram";
 import type { LiveSpectrogramHandle } from "./components/LiveSpectrogram";
-import type { WindowResult } from "./types/protocol";
-import { Mic, MicOff, Activity, ShieldCheck, ShieldAlert, Wifi } from "lucide-react";
+import { HeatmapOverlay } from "./components/HeatmapOverlay";
+import type { HeatmapOverlayHandle } from "./components/HeatmapOverlay";
+import { RiskGauge } from "./components/RiskGauge";
+import { LatencyMeter } from "./components/LatencyMeter";
+import { BiomarkerPanel } from "./components/BiomarkerPanel";
+import { Timeline } from "./components/Timeline";
+import { VerdictBanner } from "./components/VerdictBanner";
+import { UploadDropzone } from "./components/UploadDropzone";
+import { DemoControls } from "./components/DemoControls";
+
+const GW_URL = `ws://${window.location.hostname}:8080/ws/live`;
+const API_URL = `http://${window.location.hostname}:8080`;
 
 export function App() {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<string>("disconnected");
-  const [lastResult, setLastResult] = useState<WindowResult | null>(null);
-  const [rtt, setRtt] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const {
+    isStreaming, connectionStatus, lastResult, rttMs, errorMsg, timeline,
+    decisionTime, sessionId,
+    setStreaming, setConnectionStatus, setLastResult, setError, reset,
+  } = useSession();
 
-  const specRef = useRef<LiveSpectrogramHandle | null>(null);
-  const wsClientRef = useRef<VoiceSentryWsClient | null>(null);
-  const stopCaptureRef = useRef<(() => void) | null>(null);
+  const specRef   = useRef<LiveSpectrogramHandle | null>(null);
+  const heatRef   = useRef<HeatmapOverlayHandle | null>(null);
+  const wsRef     = useRef<VoiceSentryWsClient | null>(null);
+  const stopAudio = useRef<(() => void) | null>(null);
+  const specWidth = useRef(0);
 
-  const startStreaming = async () => {
-    setErrorMsg(null);
+  const startStreaming = useCallback(async () => {
+    setError(null);
+    setConnectionStatus("connecting");
     try {
-      const wsUrl = `ws://${window.location.hostname}:8080/ws/live`;
-      const client = new VoiceSentryWsClient(wsUrl, {
-        onWindowResult: (result, currentRtt) => {
-          setLastResult(result);
-          if (currentRtt !== null) setRtt(Math.round(currentRtt));
-          if (result.spec_new) {
-            specRef.current?.pushSpec(result.spec_new);
-          }
+      const client = new VoiceSentryWsClient(GW_URL, {
+        onWindowResult: (result, rtt) => {
+          setLastResult(result, rtt);
+          if (result.spec_new) specRef.current?.pushSpec(result.spec_new);
+          if (result.heatmap)  heatRef.current?.updateHeatmap(result.heatmap);
+          else                 heatRef.current?.updateHeatmap(null);
         },
-        onStatusChange: (status) => setConnectionStatus(status),
-        onError: (err) => setErrorMsg(`${err.code}: ${err.message}`),
+        onStatusChange: (s) => setConnectionStatus(s as any),
+        onError: (err) => setError(`${err.code}: ${err.message}`),
       });
-
       client.connect();
-      wsClientRef.current = client;
+      wsRef.current = client;
 
-      const stopAudio = await startCapture("mic", (pcmBuffer) => {
-        client.sendAudioFrame(pcmBuffer);
-      });
-
-      stopCaptureRef.current = stopAudio;
-      setIsStreaming(true);
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || "Failed to start microphone capture");
+      const stop = await startCapture("mic", (buf) => client.sendAudioFrame(buf));
+      stopAudio.current = stop;
+      setStreaming(true);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to start capture");
       stopStreaming();
     }
-  };
+  }, []);
 
-  const stopStreaming = () => {
-    if (stopCaptureRef.current) {
-      stopCaptureRef.current();
-      stopCaptureRef.current = null;
-    }
-    if (wsClientRef.current) {
-      wsClientRef.current.disconnect();
-      wsClientRef.current = null;
-    }
-    setIsStreaming(false);
-  };
+  const stopStreaming = useCallback(() => {
+    stopAudio.current?.();
+    stopAudio.current = null;
+    wsRef.current?.disconnect();
+    wsRef.current = null;
+    setStreaming(false);
+    setConnectionStatus("disconnected");
+  }, []);
 
-  const resetSession = () => {
+  const handleReset = useCallback(() => {
     specRef.current?.reset();
-    setLastResult(null);
-    setRtt(null);
-    wsClientRef.current?.reset();
-  };
+    heatRef.current?.clear();
+    wsRef.current?.reset();
+    reset();
+  }, []);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setError(null);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.windows) return;
+
+      specRef.current?.reset();
+      heatRef.current?.clear();
+      reset();
+
+      // Animate results at real-time speed
+      let idx = 0;
+      const step = () => {
+        if (idx >= data.windows.length) return;
+        const w = data.windows[idx++];
+        setLastResult(w, null);
+        if (w.spec_new) specRef.current?.pushSpec(w.spec_new);
+        if (w.heatmap)  heatRef.current?.updateHeatmap(w.heatmap);
+        setTimeout(step, 500); // 0.5s hop = real-time
+      };
+      step();
+    } catch (e: any) {
+      setError(`Upload failed: ${e.message}`);
+    }
+  }, []);
+
+  const handleDemoClip = useCallback(async (url: string) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Demo clip not found: ${url}`);
+      const blob = await res.blob();
+      const file = new File([blob], url.split("/").pop() || "demo.wav", { type: "audio/wav" });
+      handleFileUpload(file);
+    } catch (e: any) {
+      setError(`Demo clip: ${e.message}`);
+    }
+  }, [handleFileUpload]);
+
+  const connIcon = connectionStatus === "connected"
+    ? <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+    : <WifiOff className="w-3.5 h-3.5 text-slate-500" />;
+
+  const state = lastResult?.state ?? "ANALYZING";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans p-6">
-      {/* Top Header */}
-      <header className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Activity className="w-6 h-6 animate-pulse" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/80
+                         bg-slate-950/80 backdrop-blur px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-600 to-indigo-600
+                          flex items-center justify-center shadow-lg">
+            <Activity className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              VoiceSentry <span className="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Vertical Slice</span>
+            <h1 className="text-base font-black tracking-tight text-white leading-none">
+              VoiceSentry
             </h1>
-            <p className="text-xs text-slate-400">Real-Time Voice Authentication & Deepfake Detection Co-Pilot</p>
+            <p className="text-[11px] text-slate-400 leading-none mt-0.5">
+              Real-Time Voice Forensics Co-Pilot
+            </p>
           </div>
         </div>
 
-        {/* Status Indicators */}
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800">
-            <Wifi className={`w-3.5 h-3.5 ${connectionStatus === "connected" ? "text-emerald-400" : "text-amber-400"}`} />
+        <div className="flex items-center gap-3 text-xs font-mono">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">
+            {connIcon}
             <span className="capitalize text-slate-300">{connectionStatus}</span>
           </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800">
-            <span className="text-slate-400">RTT:</span>
-            <span className={rtt && rtt < 300 ? "text-emerald-400 font-semibold" : "text-amber-400"}>
-              {rtt !== null ? `${rtt} ms` : "--"}
-            </span>
+          {rttMs !== null && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">
+              <span className="text-slate-400">RTT</span>
+              <span className={rttMs < 300 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                {rttMs}ms
+              </span>
+            </div>
+          )}
+          <div className="text-[10px] text-slate-600 max-w-[120px] truncate" title={sessionId}>
+            {sessionId.slice(0, 8)}…
           </div>
         </div>
       </header>
 
-      {/* Error Alert */}
+      {/* ── Error bar ── */}
       {errorMsg && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-300 text-sm flex items-center justify-between">
+        <div className="px-6 py-2 bg-rose-950/80 border-b border-rose-800/60 text-rose-300 text-xs flex justify-between">
           <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-white text-xs underline">
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-white underline">
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Main Grid */}
-      <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-        {/* Left Column: Spectrogram View */}
-        <div className="lg:col-span-2 flex flex-col space-y-4">
-          <LiveSpectrogram ref={specRef} width={800} height={320} />
+      {/* ── Main Layout ── */}
+      <main className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-0 overflow-hidden">
 
-          {/* Controls Bar */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-            <div className="flex items-center gap-3">
-              {!isStreaming ? (
-                <button
-                  onClick={startStreaming}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-white shadow-lg transition-all"
-                >
-                  <Mic className="w-4 h-4" /> Start Mic
-                </button>
-              ) : (
-                <button
-                  onClick={stopStreaming}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 font-semibold text-white shadow-lg transition-all"
-                >
-                  <MicOff className="w-4 h-4" /> Stop Mic
-                </button>
-              )}
+        {/* Left: Spectrogram + Heatmap + Verdict + Timeline + Controls */}
+        <section className="flex flex-col gap-4 p-6 overflow-auto">
 
-              <button
-                onClick={resetSession}
-                className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all"
-              >
-                Reset
-              </button>
+          {/* Verdict */}
+          <VerdictBanner
+            state={state}
+            committed={lastResult?.committed ?? false}
+            decisionTimeS={decisionTime}
+            pSpoof={lastResult?.p_spoof ?? null}
+          />
+
+          {/* Spectrogram + Heatmap */}
+          <div className="relative rounded-xl border border-slate-800 overflow-hidden bg-slate-950 shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900/60">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Live Log-Mel Spectrogram (0 – 8 kHz)
+              </span>
+              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+                <span>64 Mel Bins • 10ms Frame</span>
+                {lastResult && (
+                  <span className="text-slate-400">
+                    seq={lastResult.seq} · {lastResult.t_end_s.toFixed(1)}s
+                  </span>
+                )}
+              </div>
             </div>
-
-            <div className="text-xs text-slate-400 flex items-center gap-4 font-mono">
-              <span>Seq: {lastResult ? lastResult.seq : 0}</span>
-              <span>Time: {lastResult ? `${lastResult.t_end_s.toFixed(1)}s` : "0.0s"}</span>
+            <div
+              className="relative"
+              ref={(el) => { if (el) specWidth.current = el.clientWidth; }}
+            >
+              <LiveSpectrogram ref={specRef} width={900} height={260} />
+              <HeatmapOverlay ref={heatRef} width={900} height={260} opacity={0.5} />
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Status & Preliminary Gauge */}
-        <div className="flex flex-col space-y-4">
-          <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-col items-center justify-center text-center h-full">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Decision State</div>
+          {/* Timeline */}
+          <Timeline points={timeline} decisionTimeS={decisionTime} height={100} />
 
-            {lastResult?.state === "CLONED" ? (
-              <div className="p-4 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 mb-3">
-                <ShieldAlert className="w-12 h-12" />
-              </div>
+          {/* Controls row */}
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/60">
+            {!isStreaming ? (
+              <button
+                id="btn-start-mic"
+                onClick={startStreaming}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500
+                           font-semibold text-white shadow-lg shadow-emerald-900/40 transition-all active:scale-95"
+              >
+                <Mic className="w-4 h-4" /> Start Mic
+              </button>
             ) : (
-              <div className="p-4 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-3">
-                <ShieldCheck className="w-12 h-12" />
-              </div>
+              <button
+                id="btn-stop-mic"
+                onClick={stopStreaming}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500
+                           font-semibold text-white shadow-lg shadow-rose-900/40 transition-all active:scale-95"
+              >
+                <MicOff className="w-4 h-4" /> Stop Mic
+              </button>
             )}
 
-            <div className="text-2xl font-black tracking-wide text-white mb-1">
-              {lastResult ? lastResult.state : "IDLE"}
-            </div>
+            <button
+              id="btn-reset"
+              onClick={handleReset}
+              className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700
+                         text-slate-300 font-medium transition-all active:scale-95"
+            >
+              Reset
+            </button>
 
-            <div className="text-xs text-slate-400 mb-6">
-              {lastResult?.committed
-                ? `Decided at ${lastResult.decision_time_s?.toFixed(1)}s`
-                : lastResult?.state === "ANALYZING"
-                ? "Accumulating audio frames..."
-                : "Awaiting audio input"}
-            </div>
+            <div className="flex-1" />
 
-            {/* Risk Percentage Bar */}
-            <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700 mb-2">
-              <div
-                className={`h-full transition-all duration-300 ${
-                  (lastResult?.risk_pct ?? 0) > 65
-                    ? "bg-rose-500"
-                    : (lastResult?.risk_pct ?? 0) > 35
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
-                }`}
-                style={{ width: `${lastResult?.risk_pct ?? 0}%` }}
-              />
-            </div>
-            <div className="flex justify-between w-full text-[11px] font-mono text-slate-400">
-              <span>Authentic (0%)</span>
-              <span className="font-bold text-slate-200">{lastResult ? `${lastResult.risk_pct.toFixed(1)}%` : "0.0%"}</span>
-              <span>Clone (100%)</span>
+            {/* File Upload */}
+            <div className="w-56">
+              <UploadDropzone onFile={handleFileUpload} disabled={isStreaming} />
             </div>
           </div>
-        </div>
+        </section>
+
+        {/* Right: Gauge + Biomarkers + Latency + Demo */}
+        <aside className="flex flex-col gap-4 p-6 border-l border-slate-800 bg-slate-950/40 overflow-auto">
+
+          {/* Risk Gauge */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">
+              Spoofing Risk
+            </div>
+            <RiskGauge
+              riskPct={lastResult?.risk_pct ?? 0}
+              state={state}
+              committed={lastResult?.committed ?? false}
+              decisionTimeS={decisionTime}
+              etaS={lastResult?.eta_to_decision_s ?? null}
+            />
+          </div>
+
+          {/* Biomarkers */}
+          <BiomarkerPanel biomarkers={lastResult?.biomarkers ?? []} />
+
+          {/* Latency */}
+          <LatencyMeter
+            totalMs={lastResult?.timings_ms?.total ?? null}
+            featuresMs={lastResult?.timings_ms?.features ?? null}
+            modelMs={lastResult?.timings_ms?.model ?? null}
+            gradcamMs={lastResult?.timings_ms?.gradcam ?? null}
+            biomarkersMs={lastResult?.timings_ms?.biomarkers ?? null}
+            rttMs={rttMs}
+          />
+
+          {/* Demo Controls */}
+          <DemoControls
+            onClipSelected={handleDemoClip}
+            onReset={handleReset}
+            disabled={isStreaming}
+          />
+
+          {/* SPRT debug info */}
+          {lastResult && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-3 text-[10px] font-mono space-y-1 text-slate-500">
+              <div className="text-slate-400 font-semibold text-xs mb-1">SPRT Debug</div>
+              <div>LLR: <span className="text-slate-300">{lastResult.llr?.toFixed(4) ?? "--"}</span></div>
+              <div>Score S_t: <span className="text-slate-300">{lastResult.score?.toFixed(4) ?? "--"}</span></div>
+              <div>p_spoof: <span className="text-slate-300">{lastResult.p_spoof?.toFixed(4) ?? "--"}</span></div>
+              <div>Committed: <span className={lastResult.committed ? "text-purple-400" : "text-slate-400"}>
+                {lastResult.committed ? "YES" : "no"}
+              </span></div>
+            </div>
+          )}
+        </aside>
       </main>
 
-      <footer className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
-        Decision support, not proof. Detectors can fail on unseen generators.
+      <footer className="px-6 py-3 border-t border-slate-800 flex justify-between text-[10px] text-slate-600">
+        <span>VoiceSentry — decision support, not proof</span>
+        <span>Detectors can fail on unseen generators</span>
       </footer>
     </div>
   );
