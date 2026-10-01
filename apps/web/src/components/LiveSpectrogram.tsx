@@ -98,10 +98,10 @@ export const LiveSpectrogram = forwardRef<LiveSpectrogramHandle, Props>(
 
       const W = displayW;
       const H = displayH;
-      const padLeft = 48;
+      const padLeft = 56;
       const padRight = 14;
       const padTop = 14;
-      const padBottom = 24;
+      const padBottom = 28;
       const plotW = Math.max(10, W - padLeft - padRight);
       const plotH = Math.max(10, H - padTop - padBottom);
 
@@ -189,12 +189,12 @@ export const LiveSpectrogram = forwardRef<LiveSpectrogramHandle, Props>(
 
       // Evaluation window label
       ctx.fillStyle = hasHeatmapRef.current ? "#fb7185" : "#38bdf8";
-      ctx.font = "bold 9px 'JetBrains Mono', monospace";
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
       ctx.textAlign = "right";
       ctx.fillText(
         hasHeatmapRef.current ? "FORENSIC ATTENTION [1.0s]" : "ACTIVE WINDOW [1.0s]",
-        padLeft + plotW - 6,
-        padTop + 12
+        padLeft + plotW - 8,
+        padTop + 14
       );
       ctx.restore();
 
@@ -206,17 +206,17 @@ export const LiveSpectrogram = forwardRef<LiveSpectrogramHandle, Props>(
       ctx.strokeRect(padLeft, padTop, plotW, plotH);
 
       // Draw Y-axis Frequency Labels
-      ctx.font = "500 10px 'JetBrains Mono', monospace";
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
       ctx.textAlign = "right";
       freqs.forEach(({ label, normY }) => {
         const y = padTop + normY * plotH;
         ctx.fillStyle = normY === 0 ? "#f43f5e" : "#94a3b8";
-        ctx.fillText(label, padLeft - 6, y + 3);
+        ctx.fillText(label, padLeft - 8, y + 4);
       });
 
       // Draw X-axis Time Labels (-6.0s, -4.5s, -3.0s, -1.5s, NOW)
       ctx.textAlign = "center";
-      ctx.font = "500 9px 'JetBrains Mono', monospace";
+      ctx.font = "500 11px 'JetBrains Mono', monospace";
       ctx.fillStyle = "#64748b";
       const times = [
         { label: "-6.0s", frac: 0.0 },
@@ -229,9 +229,9 @@ export const LiveSpectrogram = forwardRef<LiveSpectrogramHandle, Props>(
         const x = padLeft + frac * plotW;
         if (label === "NOW") {
           ctx.fillStyle = "#38bdf8";
-          ctx.font = "bold 9px 'JetBrains Mono', monospace";
+          ctx.font = "bold 11px 'JetBrains Mono', monospace";
         }
-        ctx.fillText(label, x, H - 7);
+        ctx.fillText(label, x, H - 8);
       });
 
       ctx.restore();

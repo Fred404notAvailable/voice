@@ -64,11 +64,11 @@ export function UploadDropzone({ onFile, disabled }: Props) {
         </div>
       ) : (
         <>
-          <Upload className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-          <div className="text-xs text-slate-400">
-            Drop audio file or <span className="text-indigo-400 underline">browse</span>
+          <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+          <div className="text-xs text-slate-300 font-medium">
+            Drop audio file or <span className="text-cyan-400 underline underline-offset-2">browse</span>
           </div>
-          <div className="text-[10px] text-slate-600 mt-1">WAV, FLAC, MP3, OGG — up to 25 MB</div>
+          <div className="text-xs text-slate-400 mt-1">WAV, FLAC, MP3, OGG, or JSON session</div>
         </>
       )}
     </div>

@@ -46,7 +46,7 @@ export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
 
     const W = displayW;
     const H = displayH;
-    const PAD = { top: 16, bottom: 24, left: 48, right: 16 };
+    const PAD = { top: 18, bottom: 28, left: 56, right: 16 };
     const plotW = Math.max(10, W - PAD.left - PAD.right);
     const plotH = Math.max(10, H - PAD.top - PAD.bottom);
 
@@ -95,9 +95,9 @@ export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
       ctx.setLineDash([]);
 
       ctx.fillStyle = pct === 100 ? "#f43f5e" : pct === 75 ? "#fb7185" : pct === 25 ? "#34d399" : "#64748b";
-      ctx.font = "500 9px 'JetBrains Mono', monospace";
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
       ctx.textAlign = "right";
-      ctx.fillText(`${pct}%`, PAD.left - 6, y + 3);
+      ctx.fillText(`${pct}%`, PAD.left - 8, y + 4);
     });
 
     if (points.length < 2) {
@@ -159,17 +159,17 @@ export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
 
       // Glow pill
       const label = `DECISION LOCK: ${decisionTimeS.toFixed(1)}s`;
-      ctx.font = "bold 9px 'JetBrains Mono', monospace";
+      ctx.font = "bold 11px 'JetBrains Mono', monospace";
       const textW = ctx.measureText(label).width;
-      const pillW = textW + 12;
-      const pillH = 16;
+      const pillW = textW + 16;
+      const pillH = 19;
       const pillX = Math.min(dx - pillW / 2, PAD.left + plotW - pillW);
 
-      ctx.fillStyle = "rgba(88, 28, 135, 0.85)";
+      ctx.fillStyle = "rgba(88, 28, 135, 0.9)";
       ctx.strokeStyle = "#c084fc";
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.roundRect(Math.max(PAD.left, pillX), PAD.top - 12, pillW, pillH, 4);
+      ctx.roundRect(Math.max(PAD.left, pillX), PAD.top - 14, pillW, pillH, 5);
       ctx.fill();
       ctx.stroke();
 
@@ -185,13 +185,13 @@ export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
 
     // Time X-Axis Ticks & Labels
     ctx.fillStyle = "#64748b";
-    ctx.font = "500 9px 'JetBrains Mono', monospace";
+    ctx.font = "500 11px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
     const numTicks = 5;
     for (let i = 0; i <= numTicks; i++) {
       const t = (i / numTicks) * maxT;
       const x = PAD.left + (i / numTicks) * plotW;
-      ctx.fillText(`${t.toFixed(1)}s`, x, H - 7);
+      ctx.fillText(`${t.toFixed(1)}s`, x, H - 8);
     }
 
     ctx.restore();

@@ -183,14 +183,14 @@ export function RiskGauge({ riskPct, state, committed, decisionTimeS, etaS }: Pr
     ctx.fill();
     ctx.restore();
 
-    // 6. Zone labels
-    ctx.font = "600 9px 'JetBrains Mono', monospace";
+    // 6. Zone labels with readable font size
+    ctx.font = "bold 11px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(16, 185, 129, 0.7)";
+    ctx.fillStyle = "rgba(16, 185, 129, 0.85)";
     ctx.fillText("0% AUTH", cx - r * 0.65, cy + 24);
-    ctx.fillStyle = "rgba(245, 158, 11, 0.7)";
+    ctx.fillStyle = "rgba(245, 158, 11, 0.85)";
     ctx.fillText("50% SUSP", cx, cy - r * 0.95);
-    ctx.fillStyle = "rgba(244, 63, 94, 0.7)";
+    ctx.fillStyle = "rgba(244, 63, 94, 0.85)";
     ctx.fillText("100% CLONE", cx + r * 0.65, cy + 24);
 
   }, [riskPct, state, committed]);
@@ -204,17 +204,17 @@ export function RiskGauge({ riskPct, state, committed, decisionTimeS, etaS }: Pr
       </div>
 
       {/* Digital Risk Value Readout */}
-      <div className="text-center -mt-4 space-y-1">
+      <div className="text-center -mt-3 space-y-1.5">
         <div 
-          className="text-4xl font-heading font-black tracking-tight drop-shadow-md transition-all duration-300"
-          style={{ color: cfg.text, textShadow: `0 0 20px ${cfg.glow}` }}
+          className="text-5xl font-heading font-black tracking-normal drop-shadow-md transition-all duration-300"
+          style={{ color: cfg.text, textShadow: `0 0 24px ${cfg.glow}` }}
         >
           {riskPct.toFixed(1)}<span className="text-2xl font-bold opacity-80">%</span>
         </div>
 
         <div className="flex items-center justify-center">
           <span 
-            className={`px-3 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase border ${cfg.badgeBg} ${cfg.border} transition-all duration-300`}
+            className={`px-4 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase border ${cfg.badgeBg} ${cfg.border} transition-all duration-300 shadow-sm`}
             style={{ color: cfg.text }}
           >
             {cfg.label}
@@ -223,20 +223,20 @@ export function RiskGauge({ riskPct, state, committed, decisionTimeS, etaS }: Pr
       </div>
 
       {/* Decision Status Telemetry */}
-      <div className="mt-3.5 w-full text-xs text-center font-mono">
+      <div className="mt-4 w-full text-xs text-center font-mono">
         {committed && decisionTimeS !== null ? (
-          <div className="flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold">Verdict Locked at {decisionTimeS.toFixed(1)}s</span>
+          <div className="flex items-center justify-center gap-2 py-1.5 px-4 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold text-xs">Verdict Locked at {decisionTimeS.toFixed(1)}s</span>
           </div>
         ) : etaS !== null ? (
-          <div className="flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span>ETA to Decision: ~{etaS.toFixed(1)}s</span>
+          <div className="flex items-center justify-center gap-2 py-1.5 px-4 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs">ETA to Decision: ~{etaS.toFixed(1)}s</span>
           </div>
         ) : (
-          <div className="text-slate-500 text-[11px] flex items-center justify-center gap-1.5 py-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-pulse" />
+          <div className="text-slate-400 text-xs flex items-center justify-center gap-2 py-1.5">
+            <span className="w-2 h-2 rounded-full bg-slate-500 animate-pulse" />
             <span>Accumulating SPRT evidence…</span>
           </div>
         )}
