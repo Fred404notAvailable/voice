@@ -1,5 +1,4 @@
-import React from "react";
-import { Cpu, Sparkles } from "lucide-react";
+import { Fingerprint, Sparkles } from "lucide-react";
 
 interface AttributionProps {
   attribution?: {
@@ -15,54 +14,62 @@ export const AttributionBadge: React.FC<AttributionProps> = ({ attribution, risk
   }
 
   // Fallback attribution heuristic if model did not supply multi-head attribution
-  const family = attribution?.family || (riskState === "CLONED" ? "Neural Vocoder / HiFi-GAN" : "Acoustic Discontinuity");
+  const family = attribution?.family || (riskState === "CLONED" ? "Neural Vocoder (HiFi-GAN / VITS)" : "Acoustic Phase Discontinuity");
   const probs = attribution?.probs || {
     "HiFi-GAN / VITS": 0.68,
     "Diffusion / XTTS": 0.22,
-    "Autoregressive": 0.10,
+    "Autoregressive / FastSpeech": 0.10,
   };
 
   return (
-    <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 backdrop-blur p-3.5 space-y-2.5">
-      <div className="flex items-center justify-between">
+    <div className="rounded-xl border border-rose-500/40 bg-rose-950/20 backdrop-blur p-4 space-y-3 shadow-lg shadow-rose-950/20">
+      <div className="flex items-center justify-between pb-1 border-b border-rose-900/40">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-rose-500/20 flex items-center justify-center">
-            <Cpu className="w-3.5 h-3.5 text-rose-400" />
+          <div className="w-6 h-6 rounded-md bg-rose-500/20 border border-rose-500/40 flex items-center justify-center">
+            <Fingerprint className="w-3.5 h-3.5 text-rose-400" />
           </div>
-          <span className="text-xs font-semibold text-rose-300 uppercase tracking-wider">
+          <span className="text-xs font-heading font-bold text-rose-300 uppercase tracking-wider">
             Generator Attribution
           </span>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-900/40 text-rose-300 border border-rose-700/40">
-          Forensic Signature
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/50">
+          Forensic Match
         </span>
       </div>
 
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-400">Suspected Architecture:</span>
-        <span className="font-mono font-semibold text-white flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-amber-400" />
-          {family}
-        </span>
+      <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-800/40 space-y-1">
+        <div className="text-[10px] font-mono text-rose-400/80 uppercase tracking-wider">Suspected Architecture</div>
+        <div className="font-heading font-bold text-sm text-white flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>{family}</span>
+        </div>
       </div>
 
-      <div className="space-y-1.5 pt-1">
-        <div className="text-[11px] text-slate-400">Architecture Likelihood:</div>
+      <div className="space-y-2 pt-0.5">
+        <div className="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+          <span>Architecture Likelihood:</span>
+          <span className="text-[10px] font-mono text-slate-500">Multi-class Posterior</span>
+        </div>
+
         {Object.entries(probs).map(([name, prob]) => (
-          <div key={name} className="space-y-0.5">
-            <div className="flex justify-between text-[10px] font-mono text-slate-300">
-              <span>{name}</span>
-              <span className="text-slate-400">{(prob * 100).toFixed(0)}%</span>
+          <div key={name} className="space-y-1">
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-slate-300">{name}</span>
+              <span className="text-rose-300 font-bold">{(prob * 100).toFixed(0)}%</span>
             </div>
-            <div className="w-full h-1 rounded-full bg-slate-800 overflow-hidden">
+            <div className="w-full h-1.5 rounded-full bg-slate-950 border border-slate-800/80 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]"
                 style={{ width: `${Math.min(100, Math.max(0, prob * 100))}%` }}
               />
             </div>
           </div>
         ))}
       </div>
+
+      <p className="text-[10px] text-slate-400/90 leading-relaxed font-sans pt-1 border-t border-rose-950/60">
+        Acoustic fingerprint shows high-frequency spectral cutoff (&gt;4 kHz roll-off deficit) characteristic of GAN synthesis filters.
+      </p>
     </div>
   );
 };

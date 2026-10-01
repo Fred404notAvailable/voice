@@ -17,12 +17,12 @@ interface Props {
 
 const STATE_COLOR: Record<RiskState, string> = {
   ANALYZING:  "#94a3b8",
-  AUTHENTIC:  "#22d3a0",
+  AUTHENTIC:  "#10b981",
   SUSPICIOUS: "#f59e0b",
   CLONED:     "#f43f5e",
 };
 
-export function Timeline({ points, decisionTimeS, height = 100 }: Props) {
+export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -31,114 +31,175 @@ export function Timeline({ points, decisionTimeS, height = 100 }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = canvas.width;
-    const H = canvas.height;
-    const PAD = { top: 8, bottom: 20, left: 36, right: 12 };
-    const plotW = W - PAD.left - PAD.right;
-    const plotH = H - PAD.top - PAD.bottom;
+    const dpr = window.devicePixelRatio || 2;
+    const rect = canvas.getBoundingClientRect();
+    const displayW = rect.width || 700;
+    const displayH = height;
+
+    if (canvas.width !== displayW * dpr || canvas.height !== displayH * dpr) {
+      canvas.width = displayW * dpr;
+      canvas.height = displayH * dpr;
+    }
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    const W = displayW;
+    const H = displayH;
+    const PAD = { top: 16, bottom: 24, left: 48, right: 16 };
+    const plotW = Math.max(10, W - PAD.left - PAD.right);
+    const plotH = Math.max(10, H - PAD.top - PAD.bottom);
 
     ctx.clearRect(0, 0, W, H);
 
-    // Background
-    ctx.fillStyle = "#0f172a";
+    // Deep cyber background
+    ctx.fillStyle = "#070b16";
     ctx.fillRect(0, 0, W, H);
 
-    if (points.length < 2) {
-      ctx.fillStyle = "#334155";
-      ctx.font = "11px Inter, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("Waiting for data…", W / 2, H / 2);
-      return;
-    }
+    // Plot area background
+    ctx.fillStyle = "#040711";
+    ctx.fillRect(PAD.left, PAD.top, plotW, plotH);
 
-    // Axis lines
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 1;
+    // Zone Background Tints
+    // 75-100% Cloned Zone
+    ctx.fillStyle = "rgba(244, 63, 94, 0.08)";
+    ctx.fillRect(PAD.left, PAD.top, plotW, plotH * 0.25);
+
+    // 25-75% Suspicious Zone
+    ctx.fillStyle = "rgba(245, 158, 11, 0.05)";
+    ctx.fillRect(PAD.left, PAD.top + plotH * 0.25, plotW, plotH * 0.50);
+
+    // 0-25% Authentic Zone
+    ctx.fillStyle = "rgba(16, 185, 129, 0.04)";
+    ctx.fillRect(PAD.left, PAD.top + plotH * 0.75, plotW, plotH * 0.25);
+
+    // Grid lines at 0%, 25%, 50%, 75%, 100%
     [0, 25, 50, 75, 100].forEach((pct) => {
       const y = PAD.top + plotH - (pct / 100) * plotH;
       ctx.beginPath();
       ctx.moveTo(PAD.left, y);
-      ctx.lineTo(W - PAD.right, y);
+      ctx.lineTo(PAD.left + plotW, y);
+      
+      if (pct === 25) {
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.3)";
+        ctx.setLineDash([3, 3]);
+      } else if (pct === 75) {
+        ctx.strokeStyle = "rgba(244, 63, 94, 0.35)";
+        ctx.setLineDash([3, 3]);
+      } else {
+        ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+        ctx.setLineDash([]);
+      }
+      ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.fillStyle = "#475569";
-      ctx.font = "9px Inter, sans-serif";
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = pct === 100 ? "#f43f5e" : pct === 75 ? "#fb7185" : pct === 25 ? "#34d399" : "#64748b";
+      ctx.font = "500 9px 'JetBrains Mono', monospace";
       ctx.textAlign = "right";
-      ctx.fillText(`${pct}%`, PAD.left - 4, y + 3);
+      ctx.fillText(`${pct}%`, PAD.left - 6, y + 3);
     });
 
-    // Risk threshold bands
-    ctx.fillStyle = "#f59e0b10";
-    ctx.fillRect(PAD.left, PAD.top + plotH * 0.35, plotW, plotH * 0.30);
-    ctx.fillStyle = "#f43f5e10";
-    ctx.fillRect(PAD.left, PAD.top, plotW, plotH * 0.35);
+    if (points.length < 2) {
+      ctx.fillStyle = "#475569";
+      ctx.font = "500 11px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Awaiting streaming audio frames for sequential SPRT hypothesis test…", W / 2, H / 2);
+      ctx.restore();
+      return;
+    }
 
-    const maxT = Math.max(points[points.length - 1].t_end_s, 5);
+    const maxT = Math.max(points[points.length - 1].t_end_s, 6.0);
     const toX = (t: number) => PAD.left + (t / maxT) * plotW;
-    const toY = (pct: number) => PAD.top + plotH - (pct / 100) * plotH;
+    const toY = (pct: number) => PAD.top + plotH - (Math.max(0, Math.min(pct, 100)) / 100) * plotH;
 
-    // Gradient fill under the curve
-    const grad = ctx.createLinearGradient(0, PAD.top, 0, H);
-    grad.addColorStop(0, "#f43f5e30");
-    grad.addColorStop(0.5, "#f59e0b15");
-    grad.addColorStop(1, "#22d3a010");
+    // Gradient fill under the risk curve
+    const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + plotH);
+    grad.addColorStop(0, "rgba(244, 63, 94, 0.35)");
+    grad.addColorStop(0.4, "rgba(245, 158, 11, 0.2)");
+    grad.addColorStop(1, "rgba(16, 185, 129, 0.05)");
+
     ctx.beginPath();
     ctx.moveTo(toX(points[0].t_end_s), toY(points[0].risk_pct));
     points.forEach((p) => ctx.lineTo(toX(p.t_end_s), toY(p.risk_pct)));
-    ctx.lineTo(toX(points[points.length - 1].t_end_s), toY(0));
-    ctx.lineTo(toX(points[0].t_end_s), toY(0));
+    ctx.lineTo(toX(points[points.length - 1].t_end_s), PAD.top + plotH);
+    ctx.lineTo(toX(points[0].t_end_s), PAD.top + plotH);
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Risk line (color-segmented)
-    ctx.lineWidth = 2;
+    // Draw Risk trajectory line (smooth and color-segmented)
+    ctx.lineWidth = 2.5;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
+
     for (let i = 1; i < points.length; i++) {
       ctx.beginPath();
       ctx.moveTo(toX(points[i - 1].t_end_s), toY(points[i - 1].risk_pct));
       ctx.lineTo(toX(points[i].t_end_s), toY(points[i].risk_pct));
-      ctx.strokeStyle = STATE_COLOR[points[i].state];
+      const col = STATE_COLOR[points[i].state];
+      ctx.strokeStyle = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 6;
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
 
-    // Decision marker
+    // Decision Lock Marker (SPRT boundary crossing)
     if (decisionTimeS !== null) {
       const dx = toX(decisionTimeS);
       ctx.beginPath();
       ctx.moveTo(dx, PAD.top);
-      ctx.lineTo(dx, H - PAD.bottom);
-      ctx.strokeStyle = "#a78bfa";
-      ctx.lineWidth = 1.5;
+      ctx.lineTo(dx, PAD.top + plotH);
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 2;
       ctx.setLineDash([4, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = "#a78bfa";
-      ctx.font = "bold 9px Inter, sans-serif";
+
+      // Glow pill
+      const label = `DECISION LOCK: ${decisionTimeS.toFixed(1)}s`;
+      ctx.font = "bold 9px 'JetBrains Mono', monospace";
+      const textW = ctx.measureText(label).width;
+      const pillW = textW + 12;
+      const pillH = 16;
+      const pillX = Math.min(dx - pillW / 2, PAD.left + plotW - pillW);
+
+      ctx.fillStyle = "rgba(88, 28, 135, 0.85)";
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(Math.max(PAD.left, pillX), PAD.top - 12, pillW, pillH, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#f3e8ff";
       ctx.textAlign = "center";
-      ctx.fillText(`▼ ${decisionTimeS.toFixed(1)}s`, dx, PAD.top + 3);
+      ctx.fillText(label, Math.max(PAD.left, pillX) + pillW / 2, PAD.top);
     }
 
-    // X-axis labels
-    ctx.fillStyle = "#475569";
-    ctx.font = "9px Inter, sans-serif";
+    // Outer plot border
+    ctx.strokeStyle = "rgba(51, 65, 85, 0.6)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(PAD.left, PAD.top, plotW, plotH);
+
+    // Time X-Axis Ticks & Labels
+    ctx.fillStyle = "#64748b";
+    ctx.font = "500 9px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    [0, maxT * 0.25, maxT * 0.5, maxT * 0.75, maxT].forEach((t) => {
-      ctx.fillText(`${t.toFixed(0)}s`, toX(t), H - 4);
-    });
-  }, [points, decisionTimeS]);
+    const numTicks = 5;
+    for (let i = 0; i <= numTicks; i++) {
+      const t = (i / numTicks) * maxT;
+      const x = PAD.left + (i / numTicks) * plotW;
+      ctx.fillText(`${t.toFixed(1)}s`, x, H - 7);
+    }
+
+    ctx.restore();
+  }, [points, decisionTimeS, height]);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Risk Timeline</span>
-        {points.length > 0 && (
-          <span className="text-xs font-mono text-slate-500">
-            {points[points.length - 1]?.t_end_s.toFixed(1)}s elapsed
-          </span>
-        )}
-      </div>
-      <canvas ref={canvasRef} width={700} height={height} className="w-full h-auto block" />
+    <div className="w-full relative">
+      <canvas ref={canvasRef} style={{ height: `${height}px` }} className="w-full block rounded-lg" />
     </div>
   );
 }

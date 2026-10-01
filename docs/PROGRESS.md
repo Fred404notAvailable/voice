@@ -12,6 +12,7 @@
 | Phase 7 | Robustness & telephony hardening | COMPLETE | Generated 750 degraded samples across 5 codecs (G.711 mu-law, A-law, Opus 16k, MP3 32k, 20dB noise). Evaluated across 12 conditions: Dev G.711 EER within 0.8% of clean (11.11% vs 11.93%). Recorded in RESULTS.md. |
 | Phase 8 | Demo hardening & containerization | COMPLETE | Added offline JSON replay in UI. Generated pre-baked session JSONs (`offline_cloned_session.json`). Created Dockerfiles for ML, Gateway, Web, and configured docker-compose.yml. |
 | Phase 9 | Docs, pitch script, Q&A, README | COMPLETE | Root `README.md` (with Mermaid architecture), `docs/DEMO_SCRIPT.md`, `docs/PITCH_QA.md`, `docs/MODEL_CARD.md`, `docs/RESULTS.md` complete. |
+| Phase 10 | Frontend Aesthetic Polish & Cyber-Forensic Overhaul | COMPLETE | High-DPI canvas scaling, coordinate-aligned Grad-CAM Inferno overlay on 1.0s active window, metallic bezel RiskGauge with calibrated radial ticks, forensic biomarker baseline bands, glassmorphism telemetry bar, Outfit/JetBrains Mono typography. Verified via subagent on `http://localhost:5180/`. |
 
 ---
 
