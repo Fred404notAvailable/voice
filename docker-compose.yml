@@ -17,7 +17,7 @@ services:
     environment:
       - ML_WS_URL=ws://ml:8000/ws/session
       - ML_HTTP_URL=http://ml:8000
-      - CORS_ORIGIN=http://localhost:5173
+      - CORS_ORIGIN=*
       - PORT=8080
     depends_on:
       ml:
@@ -25,6 +25,6 @@ services:
 
   web:
     build: ./apps/web
-    ports: ["5173:80"]
+    ports: ["5180:80", "5173:80"]
     depends_on:
       - gateway

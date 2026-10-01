@@ -101,6 +101,37 @@ export function App() {
 
   const handleFileUpload = useCallback(async (file: File) => {
     setError(null);
+
+    // Offline session replay support
+    if (file.name.endsWith(".json")) {
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const windows = data.windows || data.timeline;
+        if (!windows || !Array.isArray(windows)) {
+          throw new Error("JSON file must contain a 'windows' or 'timeline' array");
+        }
+        specRef.current?.reset();
+        heatRef.current?.clear();
+        reset();
+
+        let idx = 0;
+        const step = () => {
+          if (idx >= windows.length) return;
+          const w = windows[idx++];
+          setLastResult(w, null);
+          if (w.spec_new) specRef.current?.pushSpec(w.spec_new);
+          if (w.heatmap)  heatRef.current?.updateHeatmap(w.heatmap);
+          setTimeout(step, 500);
+        };
+        step();
+        return;
+      } catch (e: any) {
+        setError(`Offline JSON replay failed: ${e.message}`);
+        return;
+      }
+    }
+
     const form = new FormData();
     form.append("file", file);
     try {

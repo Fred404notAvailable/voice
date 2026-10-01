@@ -4,13 +4,13 @@
 |---|---|---|---|
 | Phase 0 | Bootstrap repo layout, packages, configs | COMPLETE | `npm --prefix apps/web run build` -> exit 0; `curl http://localhost:8080/api/health` -> 200 OK; `curl http://localhost:8000/health` -> 200 OK |
 | Phase 1 | Echo vertical slice (Mic -> Gateway -> ML -> UI) | COMPLETE | `python -m pytest services/ml/tests -v` -> 8 passed; `python scripts/e2e_smoke.py` -> 6/6 frames processed, strictly increasing seq, avg latency ~5ms |
-| Phase 2 | Data, manifest, own eval set | IN PROGRESS | Starter dataset generated (`starter_manifest.csv`, 108 clips); awaiting full ASVspoof2019 LA download. |
+| Phase 2 | Data, manifest, own eval set | COMPLETE | Unpacked 122k ASVspoof files into `data/raw/LA`. Built balanced `manifest.csv` (6,000 train, 1,500 dev, 3,000 eval). Attack split: train/dev A01-A06, eval unseen A07-A19. |
 | Phase 3 | Baseline model + handcrafted features | COMPLETE | `services/ml/app/fallback.py` + `training/train_baseline.py` built. |
-| Phase 4 | CNN training + temperature scaling calibration | COMPLETE | `train_cnn.py` executed: Best dev EER 0.00%, `model.pt` saved; `calibrate.py` generated `calibration.json` (T*=20.0); `compute_baselines.py` generated `baselines.json`. |
-| Phase 5 | Streaming engine + Grad-CAM integration | COMPLETE | Real PyTorch SpoofCNN + Grad-CAM loaded in ML service. `http://localhost:8000/health` reports `model_loaded: true, calibrated: true`. `bench_latency.py` measured p90=125.6ms (target <=150ms). |
+| Phase 4 | CNN training + temperature scaling calibration | COMPLETE | `train_cnn.py` on 6,000 ASVspoof samples: Dev Acc=88.5%, Dev EER=11.60%. Eval Acc=77.5%, EER=23.13% on unseen attacks. Calibrated T*=0.6964. Baselines computed from 300 bonafide samples. |
+| Phase 5 | Streaming engine + Grad-CAM integration | COMPLETE | Real PyTorch SpoofCNN + Grad-CAM loaded in ML service. `http://localhost:8000/health` reports `model_loaded: true, calibrated: true`. Smoke test: Real human -> AUTHENTIC (~20%), Clone -> CLONED at 1.5s (99.3%). |
 | Phase 6 | Frontend visuals (Spectrogram, Gauge, Biomarkers, Timeline, Verdict, Attribution) | COMPLETE | `npm run build` -> exit 0. Added `AttributionBadge`, session export, keyboard shortcuts (`Space`, `R`). |
-| Phase 7 | Robustness & telephony hardening | COMPLETE (code) | `training/augment_codecs.py` built; `training/evaluate.py` built with per-condition metrics. |
-| Phase 8 | Demo hardening & session export | COMPLETE | Added `/api/session/:id/export` in gateway. Session export tested. Keyboard shortcuts active. |
+| Phase 7 | Robustness & telephony hardening | COMPLETE | Generated 750 degraded samples across 5 codecs (G.711 mu-law, A-law, Opus 16k, MP3 32k, 20dB noise). Evaluated across 12 conditions: Dev G.711 EER within 0.8% of clean (11.11% vs 11.93%). Recorded in RESULTS.md. |
+| Phase 8 | Demo hardening & containerization | COMPLETE | Added offline JSON replay in UI. Generated pre-baked session JSONs (`offline_cloned_session.json`). Created Dockerfiles for ML, Gateway, Web, and configured docker-compose.yml. |
 | Phase 9 | Docs, pitch script, Q&A, README | COMPLETE | Root `README.md` (with Mermaid architecture), `docs/DEMO_SCRIPT.md`, `docs/PITCH_QA.md`, `docs/MODEL_CARD.md`, `docs/RESULTS.md` complete. |
 
 ---

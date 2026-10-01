@@ -20,7 +20,7 @@ export function UploadDropzone({ onFile, disabled }: Props) {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file && (file.type.startsWith("audio/") || file.name.match(/\.(wav|flac|mp3|ogg|m4a)$/i))) {
+    if (file && (file.type.startsWith("audio/") || file.name.match(/\.(wav|flac|mp3|ogg|m4a|json)$/i))) {
       handleFile(file);
     }
   };
@@ -42,7 +42,7 @@ export function UploadDropzone({ onFile, disabled }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*,.flac"
+        accept="audio/*,.flac,.json"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
