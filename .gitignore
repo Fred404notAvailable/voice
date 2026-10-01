@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+dist/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Data & Artifacts
+data/raw/*
+data/processed/*
+data/own_eval/*.wav
+services/ml/artifacts/*.pt
+services/ml/artifacts/*.joblib
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/own_eval/.gitkeep
+!services/ml/artifacts/.gitkeep
+
+# Environment & OS
+.env
+.DS_Store
+Thumbs.db
