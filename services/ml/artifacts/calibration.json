@@ -1,0 +1,6 @@
+{
+  "temperature": 19.999994,
+  "nll_before": 1.5795,
+  "nll_after": 0.6939,
+  "dev_samples": 24
+}

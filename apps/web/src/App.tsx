@@ -1,5 +1,5 @@
-import { useRef, useCallback } from "react";
-import { Mic, MicOff, Activity, Wifi, WifiOff } from "lucide-react";
+import { useRef, useCallback, useEffect } from "react";
+import { Mic, MicOff, Activity, Wifi, WifiOff, Download, Presentation } from "lucide-react";
 
 import { startCapture } from "./lib/audioCapture";
 import { VoiceSentryWsClient } from "./lib/wsClient";
@@ -16,6 +16,7 @@ import { Timeline } from "./components/Timeline";
 import { VerdictBanner } from "./components/VerdictBanner";
 import { UploadDropzone } from "./components/UploadDropzone";
 import { DemoControls } from "./components/DemoControls";
+import { AttributionBadge } from "./components/AttributionBadge";
 
 const GW_URL = `ws://${window.location.hostname}:8080/ws/live`;
 const API_URL = `http://${window.location.hostname}:8080`;
@@ -75,6 +76,29 @@ export function App() {
     reset();
   }, []);
 
+  // Keyboard shortcuts: Space (toggle start/stop), R (reset)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is in an input or textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (isStreaming) {
+          stopStreaming();
+        } else {
+          startStreaming();
+        }
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        handleReset();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isStreaming, startStreaming, stopStreaming, handleReset]);
+
   const handleFileUpload = useCallback(async (file: File) => {
     setError(null);
     const form = new FormData();
@@ -117,6 +141,43 @@ export function App() {
     }
   }, [handleFileUpload]);
 
+  const handleExportSession = useCallback(async () => {
+    try {
+      // First try fetching full timeline from gateway export endpoint
+      let exportData: any = null;
+      try {
+        const res = await fetch(`${API_URL}/api/session/${sessionId}/export`);
+        if (res.ok) {
+          exportData = await res.json();
+        }
+      } catch {
+        // fallback to client-side state
+      }
+
+      if (!exportData) {
+        exportData = {
+          session_id: sessionId,
+          exported_at: new Date().toISOString(),
+          decision_time_s: decisionTime,
+          final_verdict: lastResult?.state ?? "ANALYZING",
+          timeline,
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `voicesentry_session_${sessionId.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(`Export failed: ${e.message}`);
+    }
+  }, [sessionId, decisionTime, lastResult, timeline]);
+
   const connIcon = connectionStatus === "connected"
     ? <Wifi className="w-3.5 h-3.5 text-emerald-400" />
     : <WifiOff className="w-3.5 h-3.5 text-slate-500" />;
@@ -144,19 +205,46 @@ export function App() {
         </div>
 
         <div className="flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">
+          {/* Quick link to Presentation Deck */}
+          <a
+            href="/presentation.html"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900/80
+                       border border-indigo-700/50 text-indigo-300 font-sans text-xs transition-colors"
+            title="Open Interactive Presentation Deck"
+          >
+            <Presentation className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Slide Deck</span>
+          </a>
+
+          {/* Export Session JSON */}
+          <button
+            onClick={handleExportSession}
+            disabled={timeline.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800
+                       border border-slate-800 text-slate-300 font-sans text-xs transition-colors disabled:opacity-40"
+            title="Export session timeline as JSON"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <span>Export JSON</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
             {connIcon}
             <span className="capitalize text-slate-300">{connectionStatus}</span>
           </div>
+
           {rttMs !== null && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">
+            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
               <span className="text-slate-400">RTT</span>
               <span className={rttMs < 300 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
                 {rttMs}ms
               </span>
             </div>
           )}
-          <div className="text-[10px] text-slate-600 max-w-[120px] truncate" title={sessionId}>
+
+          <div className="text-[10px] text-slate-600 max-w-[100px] truncate" title={sessionId}>
             {sessionId.slice(0, 8)}…
           </div>
         </div>
@@ -173,12 +261,12 @@ export function App() {
       )}
 
       {/* ── Main Layout ── */}
-      <main className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-0 overflow-hidden">
+      <main className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-0 overflow-hidden">
 
         {/* Left: Spectrogram + Heatmap + Verdict + Timeline + Controls */}
         <section className="flex flex-col gap-4 p-6 overflow-auto">
 
-          {/* Verdict */}
+          {/* Verdict Banner */}
           <VerdictBanner
             state={state}
             committed={lastResult?.committed ?? false}
@@ -186,62 +274,90 @@ export function App() {
             pSpoof={lastResult?.p_spoof ?? null}
           />
 
-          {/* Spectrogram + Heatmap */}
-          <div className="relative rounded-xl border border-slate-800 overflow-hidden bg-slate-950 shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900/60">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Live Log-Mel Spectrogram (0 – 8 kHz)
-              </span>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-                <span>64 Mel Bins • 10ms Frame</span>
-                {lastResult && (
-                  <span className="text-slate-400">
-                    seq={lastResult.seq} · {lastResult.t_end_s.toFixed(1)}s
-                  </span>
-                )}
+          {/* Live Spectrogram with Grad-CAM overlay */}
+          <div className="relative rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800/60 text-xs text-slate-400">
+              <span className="font-semibold text-slate-300">Live Mel-Spectrogram (0 – 8 kHz) & Grad-CAM Heatmap</span>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Spectrogram (Viridis)
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Forensic Attention (Inferno)
+                </span>
               </div>
             </div>
+
             <div
-              className="relative"
-              ref={(el) => { if (el) specWidth.current = el.clientWidth; }}
+              className="relative h-60 w-full"
+              ref={(el) => {
+                if (el && el.clientWidth !== specWidth.current) {
+                  specWidth.current = el.clientWidth;
+                }
+              }}
             >
-              <LiveSpectrogram ref={specRef} width={900} height={260} />
-              <HeatmapOverlay ref={heatRef} width={900} height={260} opacity={0.5} />
+              <LiveSpectrogram
+                ref={specRef}
+                width={specWidth.current || 800}
+                height={240}
+              />
+              <HeatmapOverlay
+                ref={heatRef}
+                width={specWidth.current || 800}
+                height={240}
+                opacity={0.65}
+              />
             </div>
           </div>
 
-          {/* Timeline */}
-          <Timeline points={timeline} decisionTimeS={decisionTime} height={100} />
+          {/* SPRT Risk Timeline */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold text-slate-300">Sequential Probability Ratio (SPRT) Risk Trajectory</span>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="text-emerald-400">Authentic (&lt;25%)</span>
+                <span className="text-amber-400">Suspicious (25-75%)</span>
+                <span className="text-rose-400">Cloned (&gt;75%)</span>
+              </div>
+            </div>
+            <Timeline
+              points={timeline}
+              height={140}
+              decisionTimeS={decisionTime}
+            />
+          </div>
 
-          {/* Controls row */}
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/60">
+          {/* Primary Controls Row */}
+          <div className="flex items-center gap-3 flex-wrap">
             {!isStreaming ? (
               <button
-                id="btn-start-mic"
                 onClick={startStreaming}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500
-                           font-semibold text-white shadow-lg shadow-emerald-900/40 transition-all active:scale-95"
+                           text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-950 active:scale-95"
               >
-                <Mic className="w-4 h-4" /> Start Mic
+                <Mic className="w-4 h-4" />
+                <span>Start Live Stream</span>
+                <kbd className="text-[10px] bg-emerald-700/60 px-1.5 py-0.5 rounded font-mono font-normal">Space</kbd>
               </button>
             ) : (
               <button
-                id="btn-stop-mic"
                 onClick={stopStreaming}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500
-                           font-semibold text-white shadow-lg shadow-rose-900/40 transition-all active:scale-95"
+                           text-white font-semibold text-sm transition-all shadow-lg shadow-rose-950 active:scale-95"
               >
-                <MicOff className="w-4 h-4" /> Stop Mic
+                <MicOff className="w-4 h-4" />
+                <span>Stop Stream</span>
+                <kbd className="text-[10px] bg-rose-700/60 px-1.5 py-0.5 rounded font-mono font-normal">Space</kbd>
               </button>
             )}
 
             <button
-              id="btn-reset"
               onClick={handleReset}
-              className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700
-                         text-slate-300 font-medium transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700
+                         text-slate-300 font-medium text-sm transition-all active:scale-95"
             >
-              Reset
+              <span>Reset</span>
+              <kbd className="text-[10px] bg-slate-700/60 px-1.5 py-0.5 rounded font-mono font-normal">R</kbd>
             </button>
 
             <div className="flex-1" />
@@ -253,7 +369,7 @@ export function App() {
           </div>
         </section>
 
-        {/* Right: Gauge + Biomarkers + Latency + Demo */}
+        {/* Right: Gauge + Attribution + Biomarkers + Latency + Demo */}
         <aside className="flex flex-col gap-4 p-6 border-l border-slate-800 bg-slate-950/40 overflow-auto">
 
           {/* Risk Gauge */}
@@ -269,6 +385,12 @@ export function App() {
               etaS={lastResult?.eta_to_decision_s ?? null}
             />
           </div>
+
+          {/* Attribution Badge (stretch forensic indicator) */}
+          <AttributionBadge
+            attribution={lastResult?.attribution ?? null}
+            riskState={state}
+          />
 
           {/* Biomarkers */}
           <BiomarkerPanel biomarkers={lastResult?.biomarkers ?? []} />
@@ -293,11 +415,11 @@ export function App() {
           {/* SPRT debug info */}
           {lastResult && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-3 text-[10px] font-mono space-y-1 text-slate-500">
-              <div className="text-slate-400 font-semibold text-xs mb-1">SPRT Debug</div>
+              <div className="text-slate-400 font-semibold text-xs mb-1">SPRT Diagnostics</div>
               <div>LLR: <span className="text-slate-300">{lastResult.llr?.toFixed(4) ?? "--"}</span></div>
               <div>Score S_t: <span className="text-slate-300">{lastResult.score?.toFixed(4) ?? "--"}</span></div>
               <div>p_spoof: <span className="text-slate-300">{lastResult.p_spoof?.toFixed(4) ?? "--"}</span></div>
-              <div>Committed: <span className={lastResult.committed ? "text-purple-400" : "text-slate-400"}>
+              <div>Committed: <span className={lastResult.committed ? "text-purple-400 font-bold" : "text-slate-400"}>
                 {lastResult.committed ? "YES" : "no"}
               </span></div>
             </div>
@@ -306,8 +428,8 @@ export function App() {
       </main>
 
       <footer className="px-6 py-3 border-t border-slate-800 flex justify-between text-[10px] text-slate-600">
-        <span>VoiceSentry — decision support, not proof</span>
-        <span>Detectors can fail on unseen generators</span>
+        <span>VoiceSentry — Forensic decision support, not legal proof</span>
+        <span>Keyboard shortcuts: [Space] Stream/Pause, [R] Reset</span>
       </footer>
     </div>
   );

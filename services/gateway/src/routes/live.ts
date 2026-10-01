@@ -169,4 +169,20 @@ export async function liveRoutes(fastify: FastifyInstance) {
     socket.on("close", cleanup);
     socket.on("error", cleanup);
   });
+
+  // Export session timeline JSON
+  fastify.get<{ Params: { id: string } }>("/api/session/:id/export", async (req, reply) => {
+    const { id } = req.params;
+    const timeline = sessionTimelines.get(id);
+    if (!timeline) {
+      reply.status(404).send({ error: "Session not found", session_id: id });
+      return;
+    }
+    return {
+      session_id: id,
+      total_windows: timeline.length,
+      exported_at: new Date().toISOString(),
+      timeline,
+    };
+  });
 }
