@@ -46,7 +46,7 @@ export function Timeline({ points, decisionTimeS, height = 150 }: Props) {
 
     const W = displayW;
     const H = displayH;
-    const PAD = { top: 18, bottom: 28, left: 56, right: 16 };
+    const PAD = { top: 22, bottom: 24, left: 54, right: 16 };
     const plotW = Math.max(10, W - PAD.left - PAD.right);
     const plotH = Math.max(10, H - PAD.top - PAD.bottom);
 

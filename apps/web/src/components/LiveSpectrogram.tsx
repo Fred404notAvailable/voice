@@ -187,15 +187,20 @@ export const LiveSpectrogram = forwardRef<LiveSpectrogramHandle, Props>(
       ctx.lineTo(winX, padTop + plotH - bracketSize);
       ctx.stroke();
 
-      // Evaluation window label
+      // Evaluation window label with dark pill background
+      const labelText = hasHeatmapRef.current ? "FORENSIC ATTENTION [1.0s]" : "ACTIVE WINDOW [1.0s]";
+      ctx.font = "bold 10px 'JetBrains Mono', monospace";
+      const labelW = ctx.measureText(labelText).width;
+      
+      ctx.fillStyle = "rgba(4, 7, 17, 0.9)";
+      ctx.fillRect(padLeft + plotW - labelW - 14, padTop + 4, labelW + 10, 16);
+      ctx.strokeStyle = hasHeatmapRef.current ? "rgba(244, 63, 94, 0.4)" : "rgba(0, 242, 254, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(padLeft + plotW - labelW - 14, padTop + 4, labelW + 10, 16);
+
       ctx.fillStyle = hasHeatmapRef.current ? "#fb7185" : "#38bdf8";
-      ctx.font = "bold 11px 'JetBrains Mono', monospace";
       ctx.textAlign = "right";
-      ctx.fillText(
-        hasHeatmapRef.current ? "FORENSIC ATTENTION [1.0s]" : "ACTIVE WINDOW [1.0s]",
-        padLeft + plotW - 8,
-        padTop + 14
-      );
+      ctx.fillText(labelText, padLeft + plotW - 9, padTop + 16);
       ctx.restore();
 
       ctx.restore(); // end clipping
