@@ -13,7 +13,7 @@ const server = Fastify({
 });
 
 await server.register(cors, {
-  origin: config.CORS_ORIGIN === "*" ? true : [config.CORS_ORIGIN, "http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: true,
   credentials: true,
 });
 

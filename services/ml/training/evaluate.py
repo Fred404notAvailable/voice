@@ -124,7 +124,7 @@ def main():
 
     results_path = Path(args.results_md)
     results_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(results_path, "w") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         f.writelines(md_lines)
     print(f"RESULTS.md updated at {results_path}")
 

@@ -8,8 +8,10 @@ interface DemoClip {
 }
 
 const DEMO_CLIPS: DemoClip[] = [
-  { label: "Human Speech Sample", url: "/demo/human_sample.wav", type: "human" },
-  { label: "TTS Clone Sample",    url: "/demo/clone_sample.wav", type: "clone" },
+  { label: "ASVspoof Real Human",         url: "/demo/asv_bonafide.wav",  type: "human" },
+  { label: "ASVspoof Neural Clone (A02)", url: "/demo/asv_spoof_a02.wav", type: "clone" },
+  { label: "Synthetic Human Tone",        url: "/demo/human_sample.wav",  type: "human" },
+  { label: "TTS Vocoder Buzz Clone",      url: "/demo/clone_sample.wav",  type: "clone" },
 ];
 
 interface Props {
