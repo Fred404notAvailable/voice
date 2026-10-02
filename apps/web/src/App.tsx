@@ -450,7 +450,7 @@ export function App() {
                   Calibrated Risk Metric
                 </span>
                 <span className="text-[10px] font-mono font-semibold text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800/60">
-                  T* = 0.696 Scaled
+                  T* = 1.063 Calibrated
                 </span>
               </div>
               <RiskGauge

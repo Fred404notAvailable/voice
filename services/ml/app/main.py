@@ -195,6 +195,12 @@ async def analyze_file(file: UploadFile = File(...)):
         if len(data.shape) > 1:
             data = data.mean(axis=1)
 
+        # Check wideband cutoff on native un-downsampled audio (if SR > 16 kHz)
+        from .features import check_wideband_cutoff
+        wideband_info = check_wideband_cutoff(data, samplerate)
+        if wideband_info.get("has_cutoff"):
+            logger.info("Wideband brickwall cutoff detected in %s: ratio >15kHz = %s", file.filename, wideband_info.get("ratio_15k"))
+
         # Resample to 16 kHz if necessary
         if samplerate != SR:
             import librosa
@@ -206,12 +212,13 @@ async def analyze_file(file: UploadFile = File(...)):
         # Convert to int16 PCM
         pcm_int16 = (np.clip(data, -1.0, 1.0) * 32767.0).astype(np.int16)
 
-        # Fresh SessionEngine
+        # Fresh SessionEngine with multimodal fusion and wideband awareness
         engine = SessionEngine(
             session_id=f"file-{file.filename}",
             model=APP_STATE["model"],
             temperature=APP_STATE["temperature"],
             baselines=APP_STATE["baselines"],
+            wideband_cutoff=wideband_info,
         )
 
         windows = []

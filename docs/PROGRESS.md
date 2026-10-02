@@ -13,6 +13,7 @@
 | Phase 8 | Demo hardening & containerization | COMPLETE | Added offline JSON replay in UI. Generated pre-baked session JSONs (`offline_cloned_session.json`). Created Dockerfiles for ML, Gateway, Web, and configured docker-compose.yml. |
 | Phase 9 | Docs, pitch script, Q&A, README | COMPLETE | Root `README.md` (with Mermaid architecture), `docs/DEMO_SCRIPT.md`, `docs/PITCH_QA.md`, `docs/MODEL_CARD.md`, `docs/RESULTS.md` complete. |
 | Phase 10 | Frontend Aesthetic Polish & Cyber-Forensic Overhaul | COMPLETE | Fixed transparent header bleed-through, resolved text overlaps (gauge ticks, spectrogram window badge, decision pill), stabilized biomarker standby state, and streamlined viewport arrangement to eliminate scrolling. Verified via subagent on `http://localhost:5180/`. |
+| Phase 11 | Multimodal Risk Fusion & Modern Zero-Shot AI Voice Hardening | COMPLETE | Fused SpoofCNN logits with physiological biomarker prior + native wideband cutoff detector. Evaluated on user ground-truth AI voice `p_10513780_723.mp3`: File mode commits CLONED at 10s (92.2% risk); Streaming flags SUSPICIOUS (83.2% risk). 20/20 held-out real human speech clips retain 100% AUTHENTIC (avg 10.8% risk). |
 
 ---
 
@@ -61,16 +62,16 @@ Rounds: 50
 
 Stage              p50       p90       p99       max
 ----------------------------------------------------
-features          8.6ms      9.4ms     10.6ms     10.9ms
-model            24.9ms     29.1ms     32.7ms     33.6ms
-gradcam          45.7ms     53.6ms    122.4ms    170.2ms
-biomarkers       34.0ms     35.4ms     38.0ms     38.9ms
-total           114.7ms    125.6ms    191.9ms    239.2ms
+features          1.8ms      1.9ms      2.0ms      2.0ms
+model             7.2ms      7.6ms      7.9ms      8.1ms
+gradcam          15.9ms     16.8ms     23.4ms     28.6ms
+biomarkers        7.5ms      7.7ms      7.9ms      7.9ms
+total            32.0ms     33.7ms     37.5ms     40.1ms
 
-Total bench time: 10.4s for 50 rounds
+Total bench time: 2.8s for 50 rounds
 
 === Target Compliance ===
-ML time per window (p90): 125.6ms -- PASS (target <= 150ms)
+ML time per window (p90): 33.7ms -- PASS (target <= 150ms, 4.5× margin)
 ```
 
 ### Live Service Health

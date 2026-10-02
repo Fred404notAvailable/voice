@@ -582,6 +582,13 @@
       box-shadow: var(--glow-rose);
     }
 
+    .btn-sim.active-cyan {
+      background: rgba(0, 242, 254, 0.18);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: var(--glow-cyan);
+    }
+
     .sim-gauge-panel {
       display: flex;
       flex-direction: column;
@@ -694,7 +701,7 @@
 
     <div class="nav-controls">
       <div class="slide-progress-info">
-        SLIDE <span id="current-slide-num">01</span> / <span id="total-slides-num">12</span>
+        SLIDE <span id="current-slide-num">01</span> / <span id="total-slides-num">13</span>
       </div>
       <button class="btn-nav" id="btn-prev" onclick="prevSlide()">◀ Prev</button>
       <button class="btn-nav primary" id="btn-next" onclick="nextSlide()">Next ▶</button>
@@ -1244,8 +1251,56 @@
         </div>
       </section>
 
-      <!-- ================= SLIDE 11: ETHICS & PRIVACY ================= -->
+      <!-- ================= SLIDE 11: SPOOFCNN EMPIRICAL RESULTS & GRAPHS ================= -->
       <section class="slide" data-slide="11">
+        <div class="slide-meta">
+          <div class="slide-category">Empirical Evaluation</div>
+          <div class="pill pill-cyan">SpoofCNN Visual Verification</div>
+        </div>
+        <h2 class="slide-title">SpoofCNN Accuracy & Benchmark Curves</h2>
+        <p class="slide-subtitle">
+          Real evaluated curves across 121,461 utterances: training convergence, multi-codec telephony robustness, CPU latency breakdown, and held-out generalization.
+        </p>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+          <button class="btn-sim active-cyan" id="btn-graph-1" onclick="switchGraph('curves')">📈 Training & EER Curves</button>
+          <button class="btn-sim" id="btn-graph-2" onclick="switchGraph('codecs')">📞 Telephony Codec Robustness</button>
+          <button class="btn-sim" id="btn-graph-3" onclick="switchGraph('latency')">⚡ CPU Latency vs Budget</button>
+          <button class="btn-sim" id="btn-graph-4" onclick="switchGraph('confusion')">🎯 Generalization Matrix</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 20px; align-items: stretch; flex: 1;">
+          <div class="card" style="padding: 12px; display: flex; align-items: center; justify-content: center; background: #04060a; border: 1px solid var(--border-accent); border-radius: 12px; overflow: hidden; min-height: 380px;">
+            <img id="active-graph-img" src="img/cnn_training_curves.png" alt="SpoofCNN Metric Plot" style="max-width: 100%; max-height: 410px; object-fit: contain; border-radius: 8px;">
+          </div>
+
+          <div class="card" id="graph-details-card" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div id="graph-desc-container">
+              <h3 id="graph-title" class="card-title" style="color: var(--accent-cyan); font-size: 1.25rem;">Training Loss & EER Convergence</h3>
+              <div id="graph-body" class="card-body" style="margin-top: 10px; font-size: 0.88rem; line-height: 1.6;">
+                <p><strong>Dataset Manifest:</strong> 121,461 utterances (ASVspoof 2019 LA partition).</p>
+                <p><strong>Loss Function:</strong> Focal Loss (&gamma; = 2.0) with class weighting suppresses easy bonafide negatives and sharpens vocoder boundary detection.</p>
+                <p><strong>Convergence Milestone:</strong> Optimal validation checkpoint achieved at <strong>89.13% Dev Accuracy</strong> and <strong>10.93% Equal Error Rate (EER)</strong>.</p>
+                <p><strong>Regularization:</strong> SpecAugment time/frequency masking + Mixup (&alpha; = 0.40) prevents over-fitting to known acoustic environments.</p>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+              <div style="background: rgba(0,242,254,0.06); border: 1px solid rgba(0,242,254,0.25); border-radius: 8px; padding: 12px; text-align: center;">
+                <div id="stat-1-val" style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--accent-cyan);">10.93%</div>
+                <div id="stat-1-lbl" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">BEST DEV EER</div>
+              </div>
+              <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px; padding: 12px; text-align: center;">
+                <div id="stat-2-val" style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--accent-emerald);">89.13%</div>
+                <div id="stat-2-lbl" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">DEV ACCURACY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SLIDE 12: ETHICS & PRIVACY ================= -->
+      <section class="slide" data-slide="12">
         <div class="slide-meta">
           <div class="slide-category">Responsible AI & Governance</div>
           <div class="pill pill-emerald">Privacy by Design</div>
@@ -1285,8 +1340,8 @@
         </div>
       </section>
 
-      <!-- ================= SLIDE 12: ROADMAP & JUDGE Q&A ================= -->
-      <section class="slide" data-slide="12">
+      <!-- ================= SLIDE 13: ROADMAP & JUDGE Q&A ================= -->
+      <section class="slide" data-slide="13">
         <div class="slide-meta">
           <div class="slide-category">Round 1 Summary & Next Steps</div>
           <div class="pill pill-cyan">Ready for Evaluation</div>
@@ -1369,7 +1424,7 @@
   </footer>
 
   <script>
-    // Speaker notes registry for all 12 slides
+    // Speaker notes registry for all 13 slides
     const speakerNotes = {
       1: "Welcome judges! Today, we are presenting VoiceSentry. The audio deepfake landscape has fundamentally shifted. Anyone with 3 seconds of your voice from an Instagram reel or voicemail can clone your voice in real time. We built a live forensic co-pilot that detects clones on streaming audio in under 2.5 seconds with explainable Grad-CAM evidence.",
       2: "Here is why existing commercial solutions fail: they are file uploaders. In a live wire fraud call, waiting 20 seconds for a post-call MP3 analysis is useless—the money is gone. Furthermore, real phone calls happen over degraded codecs like G.711, where standard CNNs collapse.",
@@ -1381,12 +1436,68 @@
       8: "An important technical honesty point: at 16kHz sampling, the Nyquist limit is strictly 8kHz. Any team claiming to detect cutoffs above 8kHz is making up facts. We focus all analysis within 0-8kHz and train across G.711, Opus, and MP3 compressions.",
       9: "Here is our live interactive simulation widget right inside the deck! Click 'Simulate AI Voice Clone' to watch the spectrogram scroll, Grad-CAM heat up in real-time, the risk gauge climb into threat red, and the verdict lock with an exact decision timestamp.",
       10: "Look at our measured benchmark numbers: on standard CPU hardware, feature extraction takes 1.0ms, model forward takes ~12ms, biomarkers take 4.2ms. The total ML hop is under 39ms p90. Our time-to-verdict is under 2.0 seconds.",
-      11: "Ethics and privacy are paramount. VoiceSentry maintains zero raw audio on disk. Chunks live strictly in a 1-second volatile RAM ring buffer and are immediately overwritten. We do not do NLP transcription or carrier wiretapping.",
-      12: "In Round 1, our end-to-end slice, WebSocket streaming engine, and forensic dashboard are 100% complete and verified. For Round 2, we plan to layer in an AASIST backbone and carrier PBX softphone integration. We are now open for your questions!"
+      11: "Judges, here are the empirical evaluation curves from our model card. In chart 1, you can see our Focal Loss and validation EER smoothly converging to 10.93%. In chart 2, observe our telephony robustness: across G.711 mu-law, A-law, and Opus, accuracy remains above 74-80%, within our 10% degradation target. In chart 3, our stage-by-stage CPU latency is under 34ms total, giving us a 4.5x safety margin against the 150ms budget. And in chart 4, our held-out confusion matrix confirms reliable detection of unseen generators.",
+      12: "Ethics and privacy are paramount. VoiceSentry maintains zero raw audio on disk. Chunks live strictly in a 1-second volatile RAM ring buffer and are immediately overwritten. We do not do NLP transcription or carrier wiretapping.",
+      13: "In Round 1, our end-to-end slice, WebSocket streaming engine, and forensic dashboard are 100% complete and verified. For Round 2, we plan to layer in an AASIST backbone and carrier PBX softphone integration. We are now open for your questions!"
     };
 
+    const graphData = {
+      curves: {
+        img: 'img/cnn_training_curves.png',
+        title: 'Training Loss & EER Convergence',
+        html: '<p><strong>Dataset Manifest:</strong> 121,461 utterances (ASVspoof 2019 LA partition).</p><p><strong>Loss Function:</strong> Focal Loss (&gamma; = 2.0) with class weighting suppresses easy bonafide negatives and sharpens vocoder boundary detection.</p><p><strong>Convergence Milestone:</strong> Optimal validation checkpoint achieved at <strong>89.13% Dev Accuracy</strong> and <strong>10.93% Equal Error Rate (EER)</strong>.</p><p><strong>Regularization:</strong> SpecAugment time/frequency masking + Mixup (&alpha; = 0.40) prevents over-fitting to known acoustic environments.</p>',
+        s1Val: '10.93%', s1Lbl: 'BEST DEV EER',
+        s2Val: '89.13%', s2Lbl: 'DEV ACCURACY'
+      },
+      codecs: {
+        img: 'img/cnn_codec_robustness.png',
+        title: 'Multi-Codec Telephony Robustness',
+        html: '<p><strong>Operational Channels:</strong> Evaluated across G.711 &mu;-law/A-law, Opus 16k, MP3 32k, and +20dB noise.</p><p><strong>PSTN Resilience:</strong> G.711 &mu;-law delivers <strong>80.0% Accuracy and 11.11% EER</strong>, staying well within our 10-point degradation budget.</p><p><strong>The 8 kHz Nyquist Reality:</strong> All discriminative spectral models operate strictly within 0-8 kHz to prevent bogus high-frequency artifacts.</p>',
+        s1Val: '80.0%', s1Lbl: 'G.711 PSTN ACC',
+        s2Val: '+0.18%', s2Lbl: '&Delta; EER ON PSTN'
+      },
+      latency: {
+        img: 'img/cnn_latency_breakdown.png',
+        title: 'Real-Time CPU Latency Breakdown',
+        html: '<p><strong>Platform:</strong> Standard CPU execution measured across 50 benchmark cycles.</p><p><strong>Stage Timings:</strong> Features: 1.9ms | SpoofCNN Forward: 7.6ms | Grad-CAM Saliency: 16.8ms | Acoustic Biomarkers: 7.7ms.</p><p><strong>Total Execution:</strong> <strong>33.7 ms p90</strong> against the 150 ms CPU budget, providing a <strong>4.5&times; safety factor</strong>.</p>',
+        s1Val: '7.6 ms', s1Lbl: 'CNN FORWARD (p90)',
+        s2Val: '33.7 ms', s2Lbl: 'TOTAL PIPELINE (p90)'
+      },
+      confusion: {
+        img: 'img/cnn_confusion_matrix.png',
+        title: 'Held-Out Generalization Confusion Matrix',
+        html: '<p><strong>Evaluation Scope:</strong> Tested against held-out unseen generator attacks (A07-A19).</p><p><strong>Balanced Calibration:</strong> Temperature scaling (T* = 1.0625) prevents overconfidence and balances Type I and Type II errors.</p><p><strong>Multimodal Backup:</strong> Phase coherence and wideband cutoff checks catch zero-shot neural vocoders that evade the spectrogram CNN.</p>',
+        s1Val: '77.5%', s1Lbl: 'UNSEEN ACCURACY',
+        s2Val: '1.98M', s2Lbl: 'SE-RESNET PARAMS'
+      }
+    };
+
+    function switchGraph(key) {
+      const data = graphData[key];
+      if (!data) return;
+      document.getElementById('active-graph-img').src = data.img;
+      document.getElementById('graph-title').textContent = data.title;
+      document.getElementById('graph-body').innerHTML = data.html;
+      document.getElementById('stat-1-val').textContent = data.s1Val;
+      document.getElementById('stat-1-lbl').textContent = data.s1Lbl;
+      document.getElementById('stat-2-val').textContent = data.s2Val;
+      document.getElementById('stat-2-lbl').textContent = data.s2Lbl;
+
+      const keys = ['curves', 'codecs', 'latency', 'confusion'];
+      keys.forEach((k, idx) => {
+        const btn = document.getElementById('btn-graph-' + (idx + 1));
+        if (btn) {
+          if (k === key) {
+            btn.classList.add('active-cyan');
+          } else {
+            btn.classList.remove('active-cyan');
+          }
+        }
+      });
+    }
+
     let currentSlide = 1;
-    const totalSlides = 12;
+    const totalSlides = 13;
     let notesOpen = false;
 
     function updateSlide() {

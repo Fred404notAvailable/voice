@@ -6,11 +6,11 @@ interface Props {
 }
 
 const DEFAULT_BIOMARKERS: Biomarker[] = [
-  { key: "pitch_perturbation", label: "Pitch Perturbation", value: 0, unit: "%", baseline_low: 0.007, baseline_high: 0.016, flagged: false },
-  { key: "rolloff_95_hz",      label: "95% Spectral Roll-off", value: 0, unit: "Hz", baseline_low: 372, baseline_high: 781, flagged: false },
-  { key: "hf_ratio_4_8k",      label: "High-Band (4-8k) Ratio", value: 0, unit: "%", baseline_low: 0.004, baseline_high: 0.004, flagged: false },
-  { key: "spectral_flatness",  label: "Spectral Flatness", value: 0, unit: "", baseline_low: 0.008, baseline_high: 0.012, flagged: false },
-  { key: "phase_coherence",    label: "Phase Coherence", value: 0, unit: "", baseline_low: 0.553, baseline_high: 0.567, flagged: false },
+  { key: "pitch_perturbation", label: "Pitch Perturbation", value: 0, unit: "%", baseline_low: 0.051, baseline_high: 0.130, flagged: false },
+  { key: "rolloff_95_hz",      label: "95% Spectral Roll-off", value: 0, unit: "Hz", baseline_low: 188, baseline_high: 1875, flagged: false },
+  { key: "hf_ratio_4_8k",      label: "High-Band (4-8k) Energy Ratio", value: 0, unit: "ratio", baseline_low: 0.001, baseline_high: 0.125, flagged: false },
+  { key: "spectral_flatness",  label: "Spectral Flatness", value: 0, unit: "ratio", baseline_low: 0.0002, baseline_high: 0.0084, flagged: false },
+  { key: "phase_coherence",    label: "Phase Coherence", value: 0, unit: "index", baseline_low: 0.602, baseline_high: 0.636, flagged: false },
 ];
 
 function BiomarkerRow({ bm, isStandby }: { bm: Biomarker; isStandby: boolean }) {

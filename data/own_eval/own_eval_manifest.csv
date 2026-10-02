@@ -1,1 +1,6 @@
 path,label,attack_id,split,condition,duration_s,generator
+data/own_eval/clones/p_10513780_723.mp3,1,A_modern_tts,eval,clean,10.88,neural_tts_32k
+apps/web/public/demo/clone_sample.wav,1,A_synthetic_buzz,eval,clean,4.0,synthetic_vocoder
+apps/web/public/demo/asv_spoof_a02.wav,1,A02,eval,clean,5.49,world_vocoder
+apps/web/public/demo/human_sample.wav,0,bonafide,eval,clean,4.0,human_speech
+apps/web/public/demo/asv_bonafide.wav,0,bonafide,eval,clean,3.71,human_speech

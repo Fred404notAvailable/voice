@@ -27,7 +27,7 @@ Measured via `scripts/bench_latency.py` (50 rounds on CPU):
 
 | Metric | Target | Hard Floor | Actual Measured | Status |
 |---|---|---|---|---|
-| **ML time per 1s window (CPU)** | $\le 150\text{ ms}$ | $\le 300\text{ ms}$ | **125.6 ms** (p90) | **PASS** |
+| **ML time per 1s window (CPU)** | $\le 150\text{ ms}$ | $\le 300\text{ ms}$ | **33.7 ms** (p90) | **PASS** (4.5× faster than target) |
 | **End-to-end WebSocket latency** | $\le 400\text{ ms}$ | $\le 800\text{ ms}$ | **10 – 17 ms** (typical) | **PASS** |
 | **Time-to-verdict on obvious clone** | $\le 2.5\text{ s}$ | $\le 4.0\text{ s}$ | **1.5 s** | **PASS** |
 | **UI frame rate during streaming** | $\ge 30\text{ fps}$ | $\ge 20\text{ fps}$ | **60 fps** (Canvas rendering) | **PASS** |
@@ -36,8 +36,9 @@ Measured via `scripts/bench_latency.py` (50 rounds on CPU):
 
 | Pipeline Stage | p50 | p90 | p99 | Max | Allocated Budget |
 |---|---|---|---|---|---|
-| Mel Spectrogram Features (64x101) | 8.6 ms | 9.4 ms | 10.6 ms | 10.9 ms | ~20–60 ms |
-| SpoofCNN Inference (PyTorch CPU) | 24.9 ms | 29.1 ms | 32.7 ms | 33.6 ms | ~20–60 ms |
-| Grad-CAM Spatial-Frequency Explainer | 45.7 ms | 53.6 ms | 122.4 ms | 170.2 ms | ~15–40 ms |
-| Acoustic Biomarkers (YIN, STFT, Flatness) | 34.0 ms | 35.4 ms | 38.0 ms | 38.9 ms | ~30–80 ms |
-| **Total Pipeline per 0.5s Hop** | **114.7 ms** | **125.6 ms** | **191.9 ms** | **239.2 ms** | **$\le 300\text{ ms}$** |
+| Mel Spectrogram Features (64x101) | 1.8 ms | 1.9 ms | 2.0 ms | 2.0 ms | ~20–60 ms |
+| SpoofCNN Inference (PyTorch CPU) | 7.2 ms | 7.6 ms | 7.9 ms | 8.1 ms | ~20–60 ms |
+| Grad-CAM Spatial-Frequency Explainer | 15.9 ms | 16.8 ms | 23.4 ms | 28.6 ms | ~15–40 ms |
+| Acoustic Biomarkers (YIN, STFT, Flatness) | 7.5 ms | 7.7 ms | 7.9 ms | 7.9 ms | ~30–80 ms |
+| **Total Pipeline per 0.5s Hop** | **32.0 ms** | **33.7 ms** | **37.5 ms** | **40.1 ms** | **$\le 300\text{ ms}$** |
+

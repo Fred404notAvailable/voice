@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from typing import Optional, Dict, Any
 from .schemas import WindowResult, TimingsMs
-from .features import SR, WIN, HOP, log_mel, log_mel_display, pack_matrix_u8_b64, extract_biomarkers
+from .features import SR, WIN, HOP, log_mel, log_mel_display, pack_matrix_u8_b64, extract_biomarkers, compute_biomarker_prior
 from .risk_engine import RiskEngine, RiskConfig
 
 # Lazy import so gradcam is not required when model is None
@@ -25,12 +25,14 @@ class SessionEngine:
         temperature: float = 1.0,
         baselines: Optional[Dict[str, Any]] = None,
         fallback_clf=None,
+        wideband_cutoff: Optional[Dict[str, Any]] = None,
     ):
         self.session_id = session_id
         self.model = model
         self.temperature = temperature
         self.baselines = baselines or {}
         self.fallback_clf = fallback_clf
+        self.wideband_cutoff = wideband_cutoff
 
         # 16,000 samples = 1.0s float32 ring buffer
         self.ring_buffer = np.zeros(WIN, dtype=np.float32)
@@ -100,7 +102,13 @@ class SessionEngine:
                 client_seq_echo=seq,
             )
 
-        # --- Model inference ---
+        # --- Extract biomarkers ---
+        t_bio_0 = time.perf_counter()
+        biomarkers = extract_biomarkers(self.ring_buffer, self.baselines)
+        self.last_biomarkers = biomarkers
+        t_bio_ms = (time.perf_counter() - t_bio_0) * 1000.0
+
+        # --- Model inference & Multimodal Fusion ---
         t_model_0 = time.perf_counter()
         p_spoof = 0.5  # default
         mel_feat: Optional[np.ndarray] = None
@@ -113,7 +121,19 @@ class SessionEngine:
                 if isinstance(logits, tuple):
                     logits = logits[0]
                 z = (logits[0, 1] - logits[0, 0]).item()
-                p_spoof = 1.0 / (1.0 + np.exp(-z / max(1e-4, self.temperature)))
+                z_scaled = z / max(1e-4, self.temperature)
+
+                # Compute acoustic biomarker prior
+                p_bio = compute_biomarker_prior(biomarkers)
+                if self.wideband_cutoff and self.wideband_cutoff.get("has_cutoff"):
+                    p_bio = max(p_bio, 0.88)
+
+                z_bio = float(np.log(max(1e-5, p_bio) / max(1e-5, 1.0 - p_bio)))
+
+                # Multimodal blend: 60% CNN log-mel features + 40% physiological biomarkers
+                w_bio = 0.40
+                z_fused = (1.0 - w_bio) * z_scaled + w_bio * z_bio
+                p_spoof = float(1.0 / (1.0 + np.exp(-z_fused)))
         elif self.fallback_clf is not None:
             p_spoof = self.fallback_clf.predict_proba_spoof(self.ring_buffer)
 
@@ -141,12 +161,6 @@ class SessionEngine:
         if heatmap is None:
             heatmap = self.last_heatmap  # keep previous heatmap faded in UI
         t_gc_ms = (time.perf_counter() - t_gc_0) * 1000.0
-
-        # --- Extract biomarkers ---
-        t_bio_0 = time.perf_counter()
-        biomarkers = extract_biomarkers(self.ring_buffer, self.baselines)
-        self.last_biomarkers = biomarkers
-        t_bio_ms = (time.perf_counter() - t_bio_0) * 1000.0
 
         t_total_ms = (time.perf_counter() - t0) * 1000.0
 

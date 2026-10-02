@@ -1,7 +1,7 @@
 import base64
 import numpy as np
 import librosa
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Any
 from .schemas import Biomarker, PackedMatrix
 
 SR = 16000
@@ -113,3 +113,68 @@ def extract_biomarkers(y: np.ndarray, baselines: Dict[str, Dict[str, float]]) ->
         )
 
     return results
+
+
+def compute_biomarker_prior(biomarkers: List[Biomarker]) -> float:
+    """
+    Computes an acoustic biomarker-driven prior probability of synthetic speech.
+    Uses multi-feature anomaly voting and phase coherence dispersion to protect
+    against neural vocoders that fool simple spectrogram CNNs.
+    """
+    flagged = [b for b in biomarkers if b.flagged]
+    n_flag = len(flagged)
+
+    # Base prior based on the number of anomalous biomarkers:
+    # 0 flags -> 0.15 (strong natural evidence)
+    # 1 flag  -> 0.30 (natural tendency)
+    # 2 flags -> 0.50 (neutral)
+    # 3 flags -> 0.70 (suspicious acoustic pattern)
+    # 4 flags -> 0.85 (highly anomalous)
+    # 5 flags -> 0.95 (extreme anomaly across all dimensions)
+    p_map = [0.15, 0.30, 0.50, 0.70, 0.85, 0.95]
+    p_bio = p_map[min(n_flag, 5)]
+
+    for b in biomarkers:
+        # Phase coherence deficit: neural vocoders (like HiFi-GAN/BigVGAN) lack human glottal pulse coupling
+        if b.key == "phase_coherence" and b.value < b.baseline_low:
+            deficit = (b.baseline_low - b.value) / (b.baseline_low + 1e-6)
+            if deficit > 0.05:
+                p_bio = max(p_bio, min(0.92, 0.55 + 2.0 * deficit))
+
+        # Severe high-frequency band limitation (vocoder brickwall cutoff)
+        if b.key == "hf_ratio_4_8k" and b.value < b.baseline_low * 0.5:
+            p_bio = max(p_bio, 0.75)
+
+    return float(p_bio)
+
+
+def check_wideband_cutoff(y_native: np.ndarray, native_sr: int) -> Dict[str, Any]:
+    """
+    Inspects un-downsampled native audio (e.g. 44.1 kHz or 48 kHz) for artificial
+    brickwall cutoffs at 12 kHz, 16 kHz, or 20 kHz (characteristic of 24 kHz or 32 kHz
+    neural vocoders upsampled to 48 kHz).
+    """
+    if native_sr <= 16000 or len(y_native) < native_sr:
+        return {"has_cutoff": False, "native_sr": native_sr, "ratio_15k": None}
+
+    try:
+        D = np.abs(librosa.stft(y_native, n_fft=2048, hop_length=512))
+        freqs = librosa.fft_frequencies(sr=native_sr, n_fft=2048)
+
+        total_energy = float(D.sum() + 1e-9)
+        energy_above_15k = float(D[freqs >= 15000, :].sum())
+        ratio_15k = float(energy_above_15k / total_energy)
+
+        # In natural 48 kHz voice recordings, energy >15 kHz is typically 0.01 - 0.08.
+        # In upsampled 32 kHz neural models, energy >15 kHz drops to < 0.0008.
+        has_cutoff = bool(ratio_15k < 0.001)
+        cutoff_est = 16000 if has_cutoff else None
+
+        return {
+            "has_cutoff": has_cutoff,
+            "cutoff_hz": cutoff_est,
+            "ratio_15k": round(ratio_15k, 6),
+            "native_sr": int(native_sr),
+        }
+    except Exception:
+        return {"has_cutoff": False, "native_sr": native_sr, "ratio_15k": None}
